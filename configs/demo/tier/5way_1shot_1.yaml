@@ -1,0 +1,26 @@
+dataset:
+    name: 'tier-imagenet'
+model:
+    structure: 'shallow'
+ctmnet:
+    pred_source: 'score'
+    dnet: True
+    dnet_out_c: 40   # shallow output channel is 64
+    dnet_supp_manner: '1'
+fsl:
+    ctm: True
+    n_way: [5]
+    k_shot: [1]
+    k_query: [15]
+train:
+    clip_grad: True
+    batch_sz: 1
+    nep: 110
+    lr_scheduler: [55, 75]
+test:
+    compute_train_acc: True
+    do_after_ep: 30           # non-eager mode
+ctrl:
+    method: 'all_new'   # keep it in all new experiments
+    eager: 0
+    note: 'config file: {:s}'
