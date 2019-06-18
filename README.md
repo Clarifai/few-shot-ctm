@@ -40,6 +40,10 @@ compatible with the latest pytorch. For example:
 ```bash
 conda install -c anaconda pillow
 ```
+Prepare the dataset (`miniImageNet` for example):
+```bash
+sh dataset/get_tier_and_mini.sh
+```
 
 ### How to run
 
@@ -47,12 +51,19 @@ conda install -c anaconda pillow
 python main.py --yaml_file configs/demo/tier/5way_1shot_1.yaml
 ```
 
-### Datasets and performance
+### Datasets
 
 We conduct all the experiments on `tieredImagenet` and `miniImagenet` benchmarks; to download
 them, please refer to [`DATASET.md`](DATASET.md).
 
 ### Adapting CTM module to your own task
+
+Please refer to `forward_CTM` method in the `core/model.py`
+file for details. 
+
+The current version contains some 
+legacy variable names in early trial experiments;
+we would fix them later.
 
 ### Citation
 Please cite in the following manner if you find it useful in your research:

@@ -97,7 +97,7 @@ def main():
     best_accuracy = opts.io.previous_acc
     RESET_BEST_ACC = True   # for evolutionary train
     last_epoch, last_iter = opts.io.saved_epoch, opts.io.saved_iter
-    opts.logger('Pipeline starts now !!!')
+    opts.logger('CTM Pipeline starts now !!! (cpu demo purpose)')
     show_str = '[TRAIN FROM SCRATCH] LOG' if not opts.io.resume else '[RESUME] LOG'
     opts.logger('{}\n'.format(show_str))
 
@@ -210,11 +210,11 @@ def main():
                                 disc_weights.max().item(), disc_weights.min().item()
                     ))
                     opts.logger('')
-                # visdom
-                if opts.misc.vis.use and opts.misc.vis.method == 'visdom':
-                    # tb.add_scalar('loss', loss.item())
-                    vis.plot_loss(**info)
-                    vis.show_dynamic_info(**info)
+                # # visdom
+                # if opts.misc.vis.use and opts.misc.vis.method == 'visdom':
+                #     # tb.add_scalar('loss', loss.item())
+                #     vis.plot_loss(**info)
+                #     vis.show_dynamic_info(**info)
 
             # VALIDATION and SAVE BEST MODEL
             if epoch > opts.test.do_after_ep and \

@@ -4,7 +4,10 @@ Simply execute:
 ```bash
 sh dataset/get_tier_and_mini.sh
 ```
-You are all set! The following are just some documents to get you more comfortable about datasets.
+You are all set! 
+
+----
+The following are just some documents to get you more comfortable about datasets.
 
 - miniImagenet
     
@@ -31,7 +34,7 @@ For more information on how to obtain the images check the original source
 
 The `dataset` folder looks like this:
     
-    CTM-few-shot
+    few-shot-ctm
     ├── ...
     └── dataset
        |__ data_loader.py

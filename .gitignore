@@ -4,3 +4,8 @@ output/
 *log
 *gz
 eg*.pdf
+*zip
+*jpg
+*png
+!asset/CTM.png
+!asset/high_level.png

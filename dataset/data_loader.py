@@ -3,9 +3,8 @@ import pickle
 import numpy as np
 
 from torch.utils.data import DataLoader
-# from tensorflow, original authors
 from dataset.tierImagenet import tierImagenet
-from dataset.miniImagenet import miniImagenet   # messed up with folder
+from dataset.mini_imagenet import miniImagenet
 from tools.general_utils import decompress
 
 
@@ -63,16 +62,11 @@ def data_loader(opts):
         val_data = [val_data]
 
         opts.logger('Train data ...')
-        # if not opts.ctrl.eager:
-        #     # update input data
         train_data = miniImagenet(
             root=relative_path,
             n_way=opts.fsl.n_way[0], k_shot=opts.fsl.k_shot[0], k_query=opts.fsl.k_query[0],
             resize=opts.data.im_size, augment=opts.data.augment,
             split='train', test=opts.test)
-        # else:
-        #     opts.logger('\tNOTE: eager mode, use val/test_data as train_data ...')
-        #     train_data = val_data[0]
         opts.logger('\t\tFind {:d} samples'.format(train_data.total_sample))
         opts.logger('\t\tFind {:d} classes'.format(train_data.cls_num))
         train_data = [train_data]

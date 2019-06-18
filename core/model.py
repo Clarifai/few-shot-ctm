@@ -867,14 +867,8 @@ class CTMNet(nn.Module):
 
     def get_embedding_score(self, support_xf_ori, query_xf_ori, n_way, query_sz):
 
-        # # sum up samples with support
-        k_shot = support_xf_ori.size(0) / n_way
-        # support_x_4stan = support_xf_ori.view(
-        #     n_way, k_shot, support_xf_ori.size(1), support_xf_ori.size(2), support_xf_ori.size(2))
-        # # n_way (5), 256, 5, 5
-        # support_x_4stan = torch.sum(support_x_4stan, 1, keepdim=False)
-        # # a better way of gather samples from support???
-        # # support_xf_ori = self.support_latent(support_xf_ori.view(n_way, -1, self.d, self.d))
+        # sum up samples with support
+        k_shot = int(support_xf_ori.size(0) / n_way)
 
         if self.use_relation_net:
             ch_sz, spatial_sz = support_xf_ori.size(1), support_xf_ori.size(2)
@@ -887,8 +881,6 @@ class CTMNet(nn.Module):
             query_xf_ori = query_xf_ori.unsqueeze(1).expand(-1, n_way*k_shot, -1, -1, -1).contiguous().view(
                 query_sz*n_way*k_shot, ch_sz, spatial_sz, spatial_sz
             )
-            # support_xf_ori = support_xf_ori.detach()
-            # query_xf_ori = query_xf_ori.detach()
             embed_combine = torch.stack([support_xf_ori, query_xf_ori], dim=1).view(
                 query_sz*n_way*k_shot, -1, spatial_sz, spatial_sz)
             _out = self.relation2(self.relation1(embed_combine))
@@ -897,13 +889,11 @@ class CTMNet(nn.Module):
             score = self.fc(_out).view(query_sz, n_way, k_shot)
 
         else:
-            support_xf = support_xf_ori.view(support_xf_ori.size(0), -1)  # size: 25/5 (support_sz/n_way) x feat_dim
-            query_xf = query_xf_ori.view(query_xf_ori.size(0), -1)  # size: 75 (query_size) x feat_dim
-            # support_xf supervision???
+            support_xf = support_xf_ori.view(support_xf_ori.size(0), -1)    # size: 25/5 (support_sz/n_way) x feat_dim
+            query_xf = query_xf_ori.view(query_xf_ori.size(0), -1)          # size: 75 (query_size) x feat_dim
             feat_dim = support_xf.size(-1)
             support_xf = support_xf.unsqueeze(0).expand(query_sz, -1, -1).contiguous().view(-1, feat_dim)
             query_xf = query_xf.unsqueeze(1).expand(-1, n_way*k_shot, -1).contiguous().view(-1, feat_dim)
-            # score = 1 + F.cosine_similarity(support_xf, query_xf)
             score = -F.pairwise_distance(support_xf, query_xf, p=2)
             score = score.view(query_sz, n_way, k_shot)
 

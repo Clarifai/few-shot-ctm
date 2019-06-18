@@ -1,5 +1,4 @@
 from tools.general_utils import *
-import logging
 
 
 class Config(object):
@@ -84,8 +83,8 @@ class Config(object):
     io.output_folder = ''
     io.model_file = ''
     io.log_file = ''
-    io.logger = None  # class object
-    io.iter_vis_loss = 25
+    io.logger = None        # class object
+    io.iter_vis_loss = 5
     io.iter_do_val = 1000
     io.loss_vis_str = ''
     io.resume = False
