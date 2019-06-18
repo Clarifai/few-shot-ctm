@@ -1,5 +1,4 @@
 import time
-import torch
 import argparse
 from torch import optim
 from torch.optim.lr_scheduler import MultiStepLR, ExponentialLR, StepLR
@@ -101,14 +100,12 @@ def main():
     show_str = '[TRAIN FROM SCRATCH] LOG' if not opts.io.resume else '[RESUME] LOG'
     opts.logger('{}\n'.format(show_str))
 
-    # old_lr = optimizer.param_groups[0]['initial_lr']
     total_ep = opts.train.nep
     if opts.ctrl.start_epoch > 0 or opts.ctrl.start_iter > 0:
         assert opts.io.resume
         RESUME = True
     else:
         RESUME = False
-    VERY_FIRST_TIME = True
 
     for epoch in range(opts.ctrl.start_epoch, total_ep):
 
@@ -148,19 +145,7 @@ def main():
                 break
 
             support_x, support_y, query_x, query_y = process_input(batch, opts, mode='train')
-
-            # shape: gpu_num x loss_num
-            if opts.fsl.ctm:
-                # New pipeline
-                loss, disc_weights = net.forward_CTM(support_x, support_y, query_x, query_y, True)
-            else:
-                if opts.model.structure == 'original':
-                    support_x, support_y, query_x, query_y = \
-                        support_x.squeeze(0), support_y.squeeze(0), query_x.squeeze(0), query_y.squeeze(0)
-                    loss = net(support_x, support_y, query_x, query_y)
-                else:
-                    loss = net(support_x, support_y, query_x, query_y,
-                               n_way=opts.fsl.n_way[which_ind], curr_shot=curr_shot)
+            loss, _ = net.forward_CTM(support_x, support_y, query_x, query_y, True)
             loss = loss.mean(0)
             vis_loss = loss.data.cpu().numpy()
 
@@ -177,34 +162,17 @@ def main():
             if opts.train.clip_grad:
                 # doesn't affect that much
                 torch.nn.utils.clip_grad_norm_(net.parameters(), 0.5)
-            # grad =
             optimizer.step()
 
             iter_time = (time.time() - step_t)
             left_time = compute_left_time(iter_time, epoch, total_ep, step, total_iter)
-            info = {
-                'curr_ep': epoch,
-                'curr_iter': step,
-                'total_ep': total_ep,
-                'total_iter': total_iter,
-                'loss': vis_loss,
-                'left_time': left_time,
-                'lr': new_lr,
-                'iter_time': iter_time
-            }
+
             # SHOW TRAIN LOSS
-            if step % opts.io.iter_vis_loss == 0 or step == total_iter - 1 or VERY_FIRST_TIME:
-                VERY_FIRST_TIME = False
-                # loss
+            if step % opts.io.iter_vis_loss == 0 or step == total_iter - 1:
                 opts.logger(opts.io.loss_vis_str.format(epoch, total_ep, step, total_iter, total_loss.item()))
                 # time
                 if step % 1000*opts.io.iter_vis_loss == 0 or step == total_iter - 1:
                     opts.logger(opts.io.time_vis_str.format(left_time[0], left_time[1], left_time[2]))
-                # # visdom
-                # if opts.misc.vis.use and opts.misc.vis.method == 'visdom':
-                #     # tb.add_scalar('loss', loss.item())
-                #     vis.plot_loss(**info)
-                #     vis.show_dynamic_info(**info)
 
             # VALIDATION and SAVE BEST MODEL
             if epoch > opts.test.do_after_ep and \

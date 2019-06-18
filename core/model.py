@@ -271,9 +271,6 @@ class CTMNet(nn.Module):
                     self._make_layer(Bottleneck, 128, 4, stride=1),
                     self._make_layer(Bottleneck, 64, 3, stride=1)
                 )
-                # ot_out = self.critic_que(repnet_out)
-                # self.ot_pool_size = ot_out.size(2)
-
             _embedding = repnet_out
 
             if self.baseline_manner == 'sample_wise_similar':
@@ -299,7 +296,7 @@ class CTMNet(nn.Module):
                     self.reshaper = self._make_layer(Bottleneck, out_size, 4, stride=1)
                 _out_downsample = self.reshaper(_embedding)
 
-            # DEDUCTOR AND PROJECTOR
+            # CONCENTRATOR AND PROJECTOR
             if self.dnet:
                 if self.mp_mean:
                     self.inplanes = _embedding.size(1)
@@ -332,6 +329,7 @@ class CTMNet(nn.Module):
                 else:
                     self.projection = self._make_layer(Bottleneck, out_size, 4, stride=1)
 
+                # deprecated; kept for legacy
                 if self.use_discri_loss:
                     # 40 x 19 x 19 = 14440
                     input_c = _out_downsample.size(1)*_out_downsample.size(2)*_out_downsample.size(2)
@@ -477,7 +475,7 @@ class CTMNet(nn.Module):
 
         return nn.Sequential(*layers)
 
-    # decprecated in CTM
+    # decprecated in CTM; kept here for ablation study
     def forward(self, support_x, support_y, query_x, query_y,
                 train=True, n_way=-1, curr_shot=-1):
 
@@ -552,23 +550,6 @@ class CTMNet(nn.Module):
                     # convert byte tensor to float tensor
                     label = torch.eq(support_y_expand, query_y_expand).float()
                     loss[i] = F.mse_loss(score[i], label)
-
-                    # support_y_neat = support_ys[i][:, ::curr_shot]  # b, n_way
-                    # target = torch.stack([
-                    #     torch.nonzero(torch.eq(support_y_neat[b], query_ys[i][b, j]))
-                    #     for b, query in enumerate(query_ys[i]) for j, _, in enumerate(query)
-                    # ])
-                    # target = target.view(-1, 1)  # shape: N
-                    # one_hot_labels = \
-                    #     torch.zeros(target.size(0), self.opts.fsl.n_way[0]).to(self.opts.ctrl.device).scatter_(
-                    #         1, target, 1)
-                    # if not self.opts.model.sum_supp_sample:
-                    #     one_hot_labels = one_hot_labels.unsqueeze(2).expand(-1, -1, 5).contiguous().view(25, -1)
-                    # loss[i] = F.mse_loss(score[i], one_hot_labels.unsqueeze(0))
-
-                    # loss[i] = torch.pow(label - score[i], 2).sum() / batch_sz  # in this case loss decrease (~100)
-                    # TODO (high): if changed to label.numel(), loss won't decrease (~.16)
-                    # loss = torch.pow(label - score, 2).sum() / label.numel()
 
                 loss = (loss.sum() / len(support_xfs)).unsqueeze(0)
 

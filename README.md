@@ -63,7 +63,7 @@ file for details.
 
 The current version contains some 
 legacy variable names in early trial experiments;
-we would fix them later.
+we would remove them later and make the repo cleaner.
 
 ### Citation
 Please cite in the following manner if you find it useful in your research:
