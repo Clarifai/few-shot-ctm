@@ -200,16 +200,6 @@ def main():
                 # time
                 if step % 1000*opts.io.iter_vis_loss == 0 or step == total_iter - 1:
                     opts.logger(opts.io.time_vis_str.format(left_time[0], left_time[1], left_time[2]))
-                # show discri weights at end of epoch
-                if step == total_iter - 1 and hasattr(opts.otnet, 'use_discri_loss') and \
-                        opts.fsl.ot and opts.otnet.use_discri_loss and opts.otnet.discri_see_weights:
-                    opts.logger('')
-                    opts.logger('\tDiscri loss layer weights (size: {}), '
-                                'mean ({:.5f}), max ({:.5f}), min ({:.5f})'.format(
-                                disc_weights.size(), torch.mean(disc_weights).item(),
-                                disc_weights.max().item(), disc_weights.min().item()
-                    ))
-                    opts.logger('')
                 # # visdom
                 # if opts.misc.vis.use and opts.misc.vis.method == 'visdom':
                 #     # tb.add_scalar('loss', loss.item())
@@ -251,9 +241,6 @@ def main():
 
     opts.logger('')
     opts.logger('Training done! check your work using:')
-    result_path = opts.cm.eid2path(opts.ctrl.eid).replace('/hd', '')
-    opts.logger('\t\thdfs dfs -ls -h {:s}'.format(result_path))
-    opts.logger('See you next time, Hongyang!')
     if opts.misc.vis.use and opts.misc.vis.method == 'visdom':
         vis.show_dynamic_info(phase='train_finish')
         if not opts.ctrl.eager:
