@@ -48,7 +48,7 @@ sh dataset/get_tier_and_mini.sh
 ### How to run
 
 ```bash
-python main.py --yaml_file configs/demo/tier/5way_1shot_1.yaml
+python main.py --yaml_file configs/demo/mini/20way_1shot.yaml
 ```
 
 ### Datasets

@@ -9,3 +9,4 @@ eg*.pdf
 *png
 !asset/CTM.png
 !asset/high_level.png
+*pyc
