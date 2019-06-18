@@ -83,13 +83,6 @@ class miniImagenet(Dataset):
         self.query_x_batch = []
         self._create_batch()
 
-    # FOR GNN METHOD
-    # def _read_im(self, im_list):
-    #     output = torch.FloatTensor(len(im_list), 3, self.resize, self.resize)
-    #     for i, curr_im_name in enumerate(im_list):
-    #         output[i] = self.transform(os.path.join(self.path, curr_im_name))
-    #     return output
-
     @staticmethod
     def _loadCSV(csvf):
         """
@@ -139,40 +132,13 @@ class miniImagenet(Dataset):
 
     def __getitem__(self, index):
         """index means index of sets, 0<= index < len(self)"""
-        # THE FOLLOWING IS FOR GNN METHOD
-        # pos_cls = random.randint(0, self.n_way-1)
-        # index_perm = np.random.permutation(self.n_way * self.k_shot)
-        # selected_cls = np.random.choice(self.cls_num, self.n_way, False)
-        #
-        # labels_x = np.zeros(self.n_way, dtype='float32')
-        # hidden_labels = np.zeros(self.n_way*self.k_shot+1, dtype=np.float32)
-        #
-        # xi = torch.FloatTensor(self.n_way*self.k_shot, 3, self.resize, self.resize).zero_()
-        # labels_xi = torch.FloatTensor(self.n_way*self.k_shot, self.n_way).zero_()
-        # oracles_xi = labels_xi
-        #
-        # # for EACH selected class and sample
-        # for cls_cnt, curr_cls in enumerate(selected_cls):
-        #     if cls_cnt == pos_cls:
-        #         samples = self._read_im(random.sample(self.data[curr_cls], self.k_shot+1))  # why?
-        #         x, labels_x[cls_cnt] = samples[0], 1
-        #         samples = samples[1:]
-        #     else:
-        #         samples = self._read_im(random.sample(self.data[curr_cls], self.k_shot))
-        #
-        #     xi[index_perm[cls_cnt*self.k_shot:cls_cnt*self.k_shot+self.k_shot]] = samples
-        #     # NOTE: unlabeled_extra case not implemented
-        #     labels_xi[index_perm[cls_cnt*self.k_shot:cls_cnt*self.k_shot+self.k_shot], cls_cnt] = 1
-        #     oracles_xi[index_perm[cls_cnt * self.k_shot:cls_cnt * self.k_shot + self.k_shot], cls_cnt] = 1
-        #
-        # return x, torch.from_numpy(labels_x), \
-        #        xi, labels_xi, oracles_xi, hidden_labels
         flatten_support_x_path = [
             os.path.join(self.path, item)
             for cls in self.support_x_batch[index] for item in cls
         ]
         support_y = np.array([
-            self.img2label[item[:9]]    # item: n0153282900000005.jpg, the first 9 characters treated as label
+            # item: n0153282900000005.jpg, the first 9 characters treated as label
+            self.img2label[item[:9]]
             for cls in self.support_x_batch[index] for item in cls
         ])
         flatten_query_x_path = [
@@ -204,7 +170,7 @@ class miniImagenet(Dataset):
         if self.split == 'test' and self.test_manner == 'standard':
             return self.test_ep_num
         else:
-            return self.total_sample / (self.support_sz + self.query_sz)
+            return int(self.total_sample / (self.support_sz + self.query_sz))
 
 
 class miniImagenet_pretrain(Dataset):
@@ -309,32 +275,3 @@ class miniImagenet_pretrain(Dataset):
     def __len__(self):
         return len(self.target)
 
-# if __name__ == '__main__':
-#     # the following episode is to view one set of images via tensorboard.
-#     from torchvision.utils import make_grid
-#     from matplotlib import pyplot as plt
-#     from tensorboardX import SummaryWriter
-#     import time
-#     plt.ion()
-#
-#     tb = SummaryWriter('runs', 'mini-imagenet')
-#     mini = miniImagenet('../mini-imagenet/', mode='train', n_way=5, k_shot=1, k_query=1, batchsz=1000, resize=168)
-#
-#     for i, set_ in enumerate(mini):
-#         # support_x: [k_shot*n_way, 3, 84, 84]
-#         support_x, support_y, query_x, _ = set_
-#         support_x = make_grid(support_x, nrow=2)
-#         query_x = make_grid(query_x, nrow=2)
-#
-#         plt.figure(1)
-#         plt.imshow(support_x.transpose(2, 0).numpy())
-#         plt.pause(0.5)
-#         plt.figure(2)
-#         plt.imshow(query_x.transpose(2, 0).numpy())
-#         plt.pause(0.5)
-#
-#         tb.add_image('support_x', support_x)
-#         tb.add_image('query_x', query_x)
-#
-#         time.sleep(5)
-#     tb.close()

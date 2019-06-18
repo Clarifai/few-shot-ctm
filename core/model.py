@@ -5,11 +5,41 @@ from torch.nn.parameter import Parameter
 from torch import nn
 from torch.nn import functional as F
 from torch.utils import model_zoo
-from archive.cvpr18_relation_original_author import CNNEncoder
 from copy import deepcopy
 
 
 eps = 1e-10
+
+
+class CNNEncoder(nn.Module):
+    def __init__(self, in_c=3):
+        super(CNNEncoder, self).__init__()
+
+        self.layer1 = nn.Sequential(
+                        nn.Conv2d(in_c, 64, kernel_size=3, padding=0),
+                        nn.BatchNorm2d(64, momentum=1, affine=True),
+                        nn.ReLU(),
+                        nn.MaxPool2d(2))
+        self.layer2 = nn.Sequential(
+                        nn.Conv2d(64, 64, kernel_size=3, padding=0),
+                        nn.BatchNorm2d(64, momentum=1, affine=True),
+                        nn.ReLU(),
+                        nn.MaxPool2d(2))
+        self.layer3 = nn.Sequential(
+                        nn.Conv2d(64, 64, kernel_size=3, padding=1),
+                        nn.BatchNorm2d(64, momentum=1, affine=True),
+                        nn.ReLU())
+        self.layer4 = nn.Sequential(
+                        nn.Conv2d(64, 64, kernel_size=3, padding=1),
+                        nn.BatchNorm2d(64, momentum=1, affine=True),
+                        nn.ReLU())
+
+    def forward(self, x):
+        out = self.layer1(x)
+        out = self.layer2(out)
+        out = self.layer3(out)
+        out = self.layer4(out)
+        return out  # 64
 
 
 class MyLinear(nn.Module):
@@ -142,12 +172,11 @@ class ResNet(nn.Module):
 def feat_extract(pretrained=False, **kwargs):
     """Constructs a ResNet-Mini-Imagenet model"""
     model_urls = {
-        'resnet18': 'https://download.pytorch.org/models/resnet18-5c106cde.pth',
-        'resnet34': 'https://download.pytorch.org/models/resnet34-333f7ec4.pth',
-        # 'resnet50': 'https://download.pytorch.org/models/resnet50-19c8e357.pth',
-        'resnet52': 'https://download.pytorch.org/models/resnet50-19c8e357.pth',
-        'resnet101': 'https://download.pytorch.org/models/resnet101-5d3b4d8f.pth',
-        'resnet152': 'https://download.pytorch.org/models/resnet152-b121ed2d.pth',
+        'resnet18':     'https://download.pytorch.org/models/resnet18-5c106cde.pth',
+        'resnet34':     'https://download.pytorch.org/models/resnet34-333f7ec4.pth',
+        'resnet52':     'https://download.pytorch.org/models/resnet50-19c8e357.pth',
+        'resnet101':    'https://download.pytorch.org/models/resnet101-5d3b4d8f.pth',
+        'resnet152':    'https://download.pytorch.org/models/resnet152-b121ed2d.pth',
     }
     logger = kwargs['opts'].logger
     # resnet"x", x = 1 + sum(layers)x3
@@ -169,39 +198,42 @@ def feat_extract(pretrained=False, **kwargs):
     return model
 
 
+# NOTE: this is the core of the Category Traversal Module (CTM)
+# The current version (June 18 2019) contains a lot of legacy variable names in early trial experiments
+# we would fix them later
 class CTMNet(nn.Module):
     """repnet => feature concat => layer4 & layer5 & avg pooling => fc => sigmoid"""
     def __init__(self, opts):
         super(CTMNet, self).__init__()
 
         self.opts = opts
-        if self.opts.fsl.ot:
-            # use forward_OT method
+        if self.opts.fsl.ctm:
+            # use forward_CTM method
             self.epsilon = .0001
             self.L = 5
             self.no_bp_P_L = False
-            self.deactivate_CE = self.opts.otnet.deactivate_CE
-            self.use_OT_net = self.opts.otnet.use_OT
-            self.pred_source = self.opts.otnet.pred_source  # 'both'   # 'score', 'dist', 'both'
+            self.deactivate_CE = self.opts.ctmnet.deactivate_CE
+            self.use_OT_net = self.opts.ctmnet.use_OT
+            self.pred_source = self.opts.ctmnet.pred_source              # 'both'   # 'score', 'dist', 'both'
 
-            self.use_relation_net = self.opts.otnet.CE_use_relation
-            self.dnet = self.opts.otnet.dnet                # dnet or baseline
-            self.dnet_out_c = self.opts.otnet.dnet_out_c    # define the reshaper
+            self.use_relation_net = self.opts.ctmnet.CE_use_relation
+            self.dnet = self.opts.ctmnet.dnet                            # dnet or baseline
+            self.dnet_out_c = self.opts.ctmnet.dnet_out_c                # define the reshaper
             try:
-                self.dnet_supp_manner = self.opts.otnet.dnet_supp_manner
-                self.mp_mean = self.opts.otnet.dnet_mp_mean
-                self.delete_mp = self.opts.otnet.dnet_delete_mp
-                self.use_discri_loss = self.opts.otnet.use_discri_loss
-                self.discri_random_target = self.opts.otnet.discri_random_target
-                self.discri_random_weight = self.opts.otnet.discri_random_weight
-                self.discri_test_update = self.opts.otnet.discri_test_update
-                self.discri_test_update_fac = self.opts.otnet.discri_test_update_fac
-                self.discri_see_weights = self.opts.otnet.discri_see_weights
-                self.discri_zz = self.opts.otnet.zz
+                self.dnet_supp_manner = self.opts.ctmnet.dnet_supp_manner
+                self.mp_mean = self.opts.ctmnet.dnet_mp_mean
+                self.delete_mp = self.opts.ctmnet.dnet_delete_mp
+                self.use_discri_loss = self.opts.ctmnet.use_discri_loss
+                self.discri_random_target = self.opts.ctmnet.discri_random_target
+                self.discri_random_weight = self.opts.ctmnet.discri_random_weight
+                self.discri_test_update = self.opts.ctmnet.discri_test_update
+                self.discri_test_update_fac = self.opts.ctmnet.discri_test_update_fac
+                self.discri_see_weights = self.opts.ctmnet.discri_see_weights
+                self.discri_zz = self.opts.ctmnet.zz
             except:
                 self.use_discri_loss = False
             try:
-                self.baseline_manner = self.opts.otnet.baseline_manner
+                self.baseline_manner = self.opts.ctmnet.baseline_manner
             except:
                 self.baseline_manner = ''
         else:
@@ -227,7 +259,7 @@ class CTMNet(nn.Module):
         self.c = repnet_sz[1]   # supposed to be 64
         self.d = repnet_sz[2]
 
-        if self.opts.fsl.ot:
+        if self.opts.fsl.ctm:
             if self.use_OT_net:
                 self.inplanes = 4 * self.c
                 self.critic_sup = nn.Sequential(
@@ -269,7 +301,6 @@ class CTMNet(nn.Module):
 
             # DEDUCTOR AND PROJECTOR
             if self.dnet:
-                # MP
                 if self.mp_mean:
                     self.inplanes = _embedding.size(1)
                 else:
@@ -446,6 +477,7 @@ class CTMNet(nn.Module):
 
         return nn.Sequential(*layers)
 
+    # decprecated in CTM
     def forward(self, support_x, support_y, query_x, query_y,
                 train=True, n_way=-1, curr_shot=-1):
 
@@ -567,11 +599,9 @@ class CTMNet(nn.Module):
         ot_loss_fac = np.min([.2*self.epoch, 1])
         return loss_fac, ot_loss_fac
 
-    def forward_OT(self, support_x, support_y, query_x, query_y, train=False, optimizer=None):
+    def forward_CTM(self, support_x, support_y, query_x, query_y, train=False, optimizer=None):
 
         target, one_hot, target_support = self.get_target(support_y, query_y)
-        # self.epoch = epoch
-        # loss_fac, ot_loss_fac = self.fac_adjust()
         batch_sz, support_sz, _d = support_x.size(0), support_x.size(1), support_x.size(3)
         query_sz = query_x.size(1)
         n_way, k_shot = self.opts.fsl.n_way[0], self.opts.fsl.k_shot[0]
@@ -597,9 +627,6 @@ class CTMNet(nn.Module):
 
             # for P: consider all components
             P = self.projection(_input_P)                                   # 1, 64, 3, 3
-            # P_size = P.size()
-            # P = F.softmax(P.view(-1), dim=0)
-            # P = P.view(P_size)
             P = F.softmax(P, dim=1)
             if self.dnet_supp_manner == '2' or self.dnet_supp_manner == '3' or self.use_discri_loss:
                 mp_modified = torch.matmul(mp, P)                           # 5, 64, 3, 3
@@ -637,6 +664,7 @@ class CTMNet(nn.Module):
             score = self.get_embedding_score(v, query, n_way, query_sz)
 
         # 3. Sinkhorn part
+        # update: deprecated
         if self.use_OT_net:
             support_xf_ot = self.critic_sup(support_xf_ori)
             # changed here to use the same as support???
@@ -662,8 +690,6 @@ class CTMNet(nn.Module):
 
                     if self.dnet_supp_manner == '1':
                         sample_v, _ = self.disc_fc[1](self.disc_fc[0](v.view(v.size(0), -1)))
-                        # sample_v_norm = sample_v / torch.norm(sample_v, dim=1, keepdim=True).clamp(min=eps)
-                        # lat_norm_ex = latent_norm.unsqueeze(1).expand(-1, k_shot, -1).contiguous().view(support_sz, -1)
                         lat_ex = latent.unsqueeze(1).expand(-1, k_shot, -1).contiguous().view(support_sz, -1)
                         inner_loss = F.mse_loss(sample_v, lat_ex)
                     elif self.dnet_supp_manner == '3':
@@ -687,27 +713,7 @@ class CTMNet(nn.Module):
                 loss_discri = zero
 
             # Standard loss
-            # if not self.deactivate_CE:
-            # loss = F.mse_loss(score, 2*labels).unsqueeze(0)   # loss won't decrease
             loss = F.cross_entropy(score, target).unsqueeze(0)
-            # else:
-            #     loss = zero
-
-            # Sinkhorn loss
-            # if self.use_OT_net:
-            #     sinkhorn_loss = torch.zeros(1).to(self.opts.ctrl.device)
-            #     for i in range(n_way):
-            #         curr_Q = Q_ot[:, i*k_shot:i*k_shot+k_shot]
-            #         # curr_cls_Q = curr_Q[target == i].unsqueeze(1)     # size: k_query, 1
-            #         curr_cls_Q = curr_Q[target == i]                    # size: k_query, k_shot
-            #         curr_cls_Q_opposite = curr_Q[target != i]           # size: 60, k_shot
-            #         sinkhorn_loss += \
-            #             (2*self.OT_loss(curr_cls_Q).unsqueeze(0) -
-            #              self.OT_loss(curr_cls_Q_opposite).unsqueeze(0) / (n_way-1))
-            #     sinkhorn_loss /= n_way
-            # # ot_loss_fac = .5 if self.use_relation_net else 1.
-            # # sinkhorn_loss *= ot_loss_fac
-            # else:
             sinkhorn_loss = zero
 
             total_loss = loss + sinkhorn_loss + loss_discri

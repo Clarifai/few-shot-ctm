@@ -3,8 +3,6 @@ import torch
 import numpy as np
 import pickle as pkl
 import cv2
-import tempfile
-from cStringIO import StringIO
 import math
 import yaml
 import copy
@@ -349,7 +347,7 @@ def _decode_cfg_value(v):
     if isinstance(v, dict):
         return AttrDict(v)
     # All remaining processing is only applied to strings
-    if not isinstance(v, basestring):
+    if not isinstance(v, str):
         return v
     # Try to interpret `v` as a:
     #   string, number, tuple, list, dict, boolean, or None
@@ -387,7 +385,7 @@ def _check_and_coerce_cfg_value_type(value_a, value_b, key, full_key):
     # Exceptions: numpy arrays, strings, tuple<->list
     if isinstance(value_b, np.ndarray):
         value_a = np.array(value_a, dtype=value_b.dtype)
-    elif isinstance(value_b, basestring):
+    elif isinstance(value_b, str):
         value_a = str(value_a)
     elif isinstance(value_a, tuple) and isinstance(value_b, list):
         value_a = list(value_a)

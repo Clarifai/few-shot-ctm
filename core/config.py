@@ -40,8 +40,8 @@ class Config(object):
     ctmnet = AttrDict()
     ctmnet.deactivate_CE = False
     ctmnet.CE_use_relation = False
-    ctmnet.use_OT = False
-    ctmnet.baseline_manner = ''  # 'sample_wise', 'sum', 'no_reshaper'
+    ctmnet.use_OT = False           # use optimal transport or not
+    ctmnet.baseline_manner = ''     # 'sample_wise', 'sum', 'no_reshaper'
     ctmnet.pred_source = 'score'
     ctmnet.dnet = False
     ctmnet.use_discri_loss = False
@@ -104,7 +104,7 @@ class Config(object):
 
     # ignore the resume file if set True
     ctrl.train_from_scratch = False
-    ctrl.device = 'cuda'
+    ctrl.device = 'cpu'
     ctrl.multi_gpu = False
     # how many iteration we want for each epoch and each test evaluation
     ctrl.total_iter_train = -1
@@ -245,7 +245,9 @@ class Config(object):
         multi_gpu = True if len(self.ctrl.gpu_id) > 1 else False
         self.logger('gpu_ids: {}\n'.format(self.ctrl.gpu_id))
         self.ctrl.multi_gpu = multi_gpu
-        self.ctrl.device = 'cuda'
+        # for demo purpose
+        self.ctrl.device = 'cpu'
+        # self.ctrl.device = 'cuda'
 
     def _sanity_check(self):
 

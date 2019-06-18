@@ -1,5 +1,5 @@
 import os
-import cPickle
+import pickle
 import numpy as np
 
 from torch.utils.data import DataLoader
@@ -28,7 +28,7 @@ def read_data(logger, cache_path):
 
     logger("\tRead cached labels from {}".format(cache_path_labels))
     with open(cache_path_labels, "rb") as f:
-        data = cPickle.load(f)
+        data = pickle.load(f)
         label_specific = data[b"label_specific"]
         label_general = data[b"label_general"]
         label_specific_str = data[b"label_specific_str"]

@@ -1,6 +1,6 @@
 ## Category Traversal Module for Few-shot Learning
 
-A PyTorch implementation (`0.4` or above) of our paper 
+A PyTorch implementation of our paper 
 "Finding Task-Relevant Features for Few-Shot Learning by Category Traversal",
 published at CVPR 2019, an **ORAL** presentation.
 
@@ -14,7 +14,7 @@ Matthew Zeiler, and Xiaogang Wang.
 [[End-of-internship Presentation Slides]](https://docs.google.com/presentation/d/1T73dgdzaD_jy2M9rNa9E1We44ZaLL9KnDNGuLBxHVfY/edit?usp=sharing) (40 mins)
 
 [[Short Slides]](https://docs.google.com/presentation/d/1Or629oe7FZJHzrnNnWh7lnyIsRtuZW8BwIn8qFFxSWQ/edit?usp=sharing)
-(5 mins at CVPR) with [video link]()
+(5 mins at CVPR)
 
 (a) describes the conventional metric-based methods and (b) depicts the proposed CTM where features are traversed across
 categories for acquiring better representations.
@@ -34,6 +34,13 @@ The following figure shows a detailed configuration of our proposed CTM module.
 - The proposed Category Traversal Module (CTM) serves as a plug-and-play
 unit to most existing methods, with ~2% improvement in accuracy.
 
+### Install
+There are some dependencies; be sure to install the newer version to be 
+compatible with the latest pytorch. For example: 
+```bash
+conda install -c anaconda pillow
+```
+
 ### How to run
 
 ```bash
@@ -43,7 +50,7 @@ python main.py --yaml_file configs/demo/tier/5way_1shot_1.yaml
 ### Datasets and performance
 
 We conduct all the experiments on `tieredImagenet` and `miniImagenet` benchmarks; to download
-them, please refer to [`DATASET.md`](dataset.md).
+them, please refer to [`DATASET.md`](DATASET.md).
 
 ### Adapting CTM module to your own task
 

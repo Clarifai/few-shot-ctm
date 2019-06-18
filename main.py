@@ -16,7 +16,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--eid', type=int, default=-1)
     parser.add_argument('--gpu_id', type=int, nargs='+', default=0)
-    parser.add_argument('--yaml_file', type=str, default='demo/mini/20way_1shot')
+    parser.add_argument('--yaml_file', type=str, default='configs/demo/mini/20way_1shot.yaml')
     outside_opts = parser.parse_args()
     if isinstance(outside_opts.gpu_id, int):
         outside_opts.gpu_id = [outside_opts.gpu_id]  # int -> list
@@ -34,6 +34,7 @@ def main():
     train_db_list, val_db_list, _, _ = data_loader(opts)
 
     # MODEL
+    # NOTE: we use cpu mode for demo; change to gpu for experiments
     net = CTMNet(opts).to(opts.ctrl.device)
 
     net_summary, param_num = model_summarize(net)
@@ -149,9 +150,9 @@ def main():
             support_x, support_y, query_x, query_y = process_input(batch, opts, mode='train')
 
             # shape: gpu_num x loss_num
-            if opts.fsl.ot:
+            if opts.fsl.ctm:
                 # New pipeline
-                loss, disc_weights = net.forward_OT(support_x, support_y, query_x, query_y, True)
+                loss, disc_weights = net.forward_CTM(support_x, support_y, query_x, query_y, True)
             else:
                 if opts.model.structure == 'original':
                     support_x, support_y, query_x, query_y = \

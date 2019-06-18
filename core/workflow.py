@@ -1,6 +1,5 @@
 import torch
 from copy import deepcopy
-import archive.task_generator_test_revise as task_gen
 
 
 def process_input(batch, opts, mode='train'):
@@ -80,8 +79,8 @@ def test_model(net, input_db, eval_length, opts, which_ind, curr_shot, optimizer
         accuracy = total_correct / total_num  # due to python 2, it's converted to int!
         accuracy = accuracy.item()
 
-    elif opts.fsl.ot and hasattr(opts.otnet, 'use_discri_loss') and \
-            opts.otnet.use_discri_loss and opts.otnet.discri_test_update:
+    elif opts.fsl.ctm and hasattr(opts.ctmnet, 'use_discri_loss') and \
+            opts.ctmnet.use_discri_loss and opts.ctmnet.discri_test_update:
 
         for j, batch_test in enumerate(input_db):
 
@@ -89,7 +88,7 @@ def test_model(net, input_db, eval_length, opts, which_ind, curr_shot, optimizer
                 break
 
             support_x, support_y, query_x, query_y = process_input(batch_test, opts, mode='test')
-            _, correct = net.forward_OT(support_x, support_y, query_x, query_y, False, optimizer=optimizer)
+            _, correct = net.forward_CTM(support_x, support_y, query_x, query_y, False, optimizer=optimizer)
             total_correct += correct.sum().float()  # multi-gpu support
             total_num += query_y.numel()
 
@@ -103,21 +102,11 @@ def test_model(net, input_db, eval_length, opts, which_ind, curr_shot, optimizer
 
                 if j >= eval_length:
                     break
-                if opts.data.use_ori_relation:
-                    task = task_gen.MiniImagenetTask(
-                        meta_test, num_classes=opts.fsl.n_way[0], train_num=curr_shot, test_num=15)
-                    support_db = task_gen.get_data_loader(task, num_per_class=curr_shot, split='support', shuffle=False)
-                    query_db = task_gen.get_data_loader(task, num_per_class=15, split='query', shuffle=False)
-                    support_x, support_y = support_db.__iter__().next()
-                    query_x, query_y = query_db.__iter__().next()
-                    support_x, support_y, query_x, query_y = \
-                        support_x.unsqueeze(0).to(opts.ctrl.device), support_y.unsqueeze(0).to(opts.ctrl.device), \
-                        query_x.unsqueeze(0).to(opts.ctrl.device), query_y.unsqueeze(0).to(opts.ctrl.device)
-                else:
-                    support_x, support_y, query_x, query_y = process_input(batch_test, opts, mode='test')
 
-                if opts.fsl.ot:
-                    _, correct = net.forward_OT(support_x, support_y, query_x, query_y, False)
+                support_x, support_y, query_x, query_y = process_input(batch_test, opts, mode='test')
+
+                if opts.fsl.ctm:
+                    _, correct = net.forward_CTM(support_x, support_y, query_x, query_y, False)
                 else:
                     if opts.model.structure == 'original':
                         support_x, support_y, query_x, query_y = \
@@ -130,11 +119,8 @@ def test_model(net, input_db, eval_length, opts, which_ind, curr_shot, optimizer
                 total_correct += correct.sum().float()  # multi-gpu support
                 total_num += query_y.numel()
 
-        accuracy = total_correct / total_num  # due to python 2, it's converted to int!
+        accuracy = total_correct / total_num        # due to python 2, it's converted to int!
         accuracy = accuracy.item()
-        # if opts.misc.vis.method == 'tensorboard':
-        #     NotImplementedError()
-        #     # tb.add_scalar('accuracy', accuracy)
         net.train()
     return accuracy
 
