@@ -38,7 +38,9 @@ unit to most existing methods, with ~2% improvement in accuracy.
 There are some dependencies; be sure to install the newer version to be 
 compatible with the latest pytorch. For example: 
 ```bash
-conda install -c anaconda pillow
+conda install pytorch torchvision cudatoolkit=10.0 -c pytorch
+conda install -c anaconda pillow pyyaml opencv requests
+conda install -c conda-forge visdom
 ```
 Prepare the dataset (`miniImageNet` for example):
 ```bash
