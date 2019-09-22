@@ -8,7 +8,7 @@ test:
 ctmnet:
     pred_source: 'score'
     dnet: True
-    dnet_out_c: 40   # shallow output channel is 64
+    dnet_out_c: 40            # shallow output channel is 64
     dnet_supp_manner: '1'
     use_discri_loss: False
 fsl:

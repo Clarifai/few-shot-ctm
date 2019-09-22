@@ -10,70 +10,34 @@ class Config(object):
     data = AttrDict()
     data.im_size = 84
     # see specific files for each set under dataset
+    # dataset/mini_imagenet.py
     data.augment = '0'
     data.use_batch_sampler = False
     data.change_on_every_ep = False
     data.use_ori_relation = False
 
     model = AttrDict()
-    model.structure = 'resnet40'  # 19, 52, 34, shallow
-    model.sum_supp_sample = False
+    # 19, 52, 34, shallow
+    model.structure = 'resnet40'
     model.resnet_pretrain = False
-    model.relation_net = 'res_block'  # this is default. other choice: 'simple'
+    # this is the default. other choice: 'simple'
+    # if relation network is used, which module to choose
+    # (resnet_block or simple)
+    model.relation_net = 'res_block'
 
     # ==============
-    fsl = AttrDict()   # few-shot learning
-    fsl.ctm = False
+    fsl = AttrDict()                # few-shot learning
+    fsl.ctm = True
     fsl.n_way = [5]
     fsl.k_shot = [5]
     fsl.k_query = [5]
     fsl.epoch_schedule = [10, 30, 40]
-    fsl.CE_loss = False
-    fsl.swap = False                # swap the set of query and support during one mini-batch
-    fsl.swap_num = 1                # for now, only supports "non-triplet case"
-    fsl.hier = False
-    fsl.triplet = False
-    fsl.meta_learn = 'nope'         # reptile, maml, meta_lstm
 
     # ==============
     ctmnet = AttrDict()
-    ctmnet.deactivate_CE = False
     ctmnet.CE_use_relation = False
-    ctmnet.use_OT = False           # use optimal transport or not
     ctmnet.baseline_manner = ''     # 'sample_wise', 'sum', 'no_reshaper'
-    ctmnet.pred_source = 'score'
-    ctmnet.dnet = False
-    ctmnet.use_discri_loss = False
-    ctmnet.zz = False
-    ctmnet.discri_random_target = False
-    # add-on functionality
-    ctmnet.discri_test_update = False
-    ctmnet.discri_test_update_fac = 1.
-    ctmnet.discri_random_weight = False
-    ctmnet.discri_see_weights = True
-    #
-    ctmnet.dnet_out_c = 64
-    ctmnet.dnet_supp_manner = '1'  # details see network structure
-    ctmnet.dnet_mp_mean = True  # True as default
-    ctmnet.dnet_delete_mp = False  # for one_shot learning
-
-    # ==============
-    mlearn = AttrDict()
-    mlearn.adapt_num = 1
-    mlearn.lr_fac = 10.
-    mlearn.outer_lr = 0.0           # to be set based on train.lr
-    mlearn.adapt_num_test = -1
-    # ==============
-    tri = AttrDict()
-    tri.twoNets = False
-    tri.loss_fac = 1.
-    tri.cls_or_sample = 'class'
-    tri.method = 'rank'             # rank, ratio, self_rank
-    tri.margin = 1.
-    tri.distance = 'l2'             # 'l1', 'cosine'
-    tri.use_tri_only = True
-    tri.test_source = 'standard'    # 'triplet', 'random', 'combine'
-    tri.norm_method = 'none'        # none, norm (-1, 1), learn
+    ctmnet.dnet = True
 
     # ==============
     io = AttrDict()
@@ -83,7 +47,7 @@ class Config(object):
     io.output_folder = ''
     io.model_file = ''
     io.log_file = ''
-    io.logger = None        # class object
+    io.logger = None                # class object
     io.iter_vis_loss = 5
     io.iter_do_val = 1000
     io.loss_vis_str = ''
@@ -98,8 +62,6 @@ class Config(object):
     ctrl.yaml_file = ''
     # gpu_id is just for visualization purpose
     ctrl.gpu_id = [0]
-    ctrl.note = ''
-    ctrl.eid = -1
 
     # ignore the resume file if set True
     ctrl.train_from_scratch = False
@@ -124,13 +86,14 @@ class Config(object):
     train.weight_decay = .0005
     train.total_loss_fac = 1.
     train.optim = 'adam'
-    train.momentum = 0.9  # only for sgd method
+    train.momentum = 0.9        # only for sgd method
     train.clip_grad = False
 
     # ==============
     test = AttrDict()
     test.batch_sz = -1
-    test.manner = 'standard'    # 'same_as_train'
+    # determine the number of query; 'same_as_train'
+    test.manner = 'standard'
     test.ep_num = 600
     test.query_num = 15
     test.compute_train_acc = True
@@ -140,15 +103,7 @@ class Config(object):
     misc = AttrDict()
     misc.manual_seed = -1
     misc.vis = AttrDict()
-    misc.vis.use = True
-    misc.vis.method = 'visdom'
-    # must be passed from configs on different servers
-    # update: by default we use q5 node
-    misc.vis.port = 2015
-    misc.vis.loss_legend = ['loss']
-    misc.vis.line = 100
-    misc.vis.txt = 200
-    misc.vis.img = 300
+    misc.vis.use = False
 
     def __init__(self, yaml_file, options=None):
 
@@ -225,19 +180,6 @@ class Config(object):
         # visualization
         self.io.loss_vis_str = ' [ep {:04d} ({})/ iter {:06d} ({})] loss: {:.4f}'
         self.io.time_vis_str = ' \tEstimated left time: {:d} days, {:.4f} hours;\tTotal time taken: {:.2f} days'
-        if self.misc.vis.use and self.misc.vis.method == 'visdom':
-            if self.fsl.triplet and self.tri.use_tri_only:
-                self.misc.vis.loss_legend = ['triplet']
-            elif self.fsl.triplet and not self.tri.use_tri_only:
-                self.misc.vis.loss_legend = ['loss', 'standard', 'triplet']
-            if self.fsl.meta_learn == 'maml' and self.ctrl.method == 'meta_learn':
-                self.misc.vis.loss_legend = ['loss', 'val_loss']
-        if self.fsl.swap:
-            # will draw an extension curve
-            _extend = []
-            for entry in self.misc.vis.loss_legend:
-                _extend.append(entry+'_extend')
-            self.misc.vis.loss_legend += _extend
         self._sanity_check()
 
         # set opt.multi_gpu and opt.device
@@ -287,8 +229,6 @@ class Config(object):
         if self.test.manner == 'same_as_train':
             del self.test['ep_num']
             del self.test['query_num']
-        # if self.test.manner == 'standard':
-        #     del self.test['batch_sz']
         if self.train.optim == 'adam':
             del self.train['momentum']
         if not self.fsl.swap:

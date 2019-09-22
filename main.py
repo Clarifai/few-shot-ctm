@@ -46,6 +46,7 @@ def main():
         net = torch.nn.DataParallel(net)
 
     # OPTIM AND LR SCHEDULE
+    optimizer, scheduler = [], []
     if opts.train.optim == 'adam':
         optimizer = optim.Adam(net.parameters(), lr=opts.train.lr, weight_decay=opts.train.weight_decay)
     elif opts.train.optim == 'sgd':
@@ -59,29 +60,17 @@ def main():
         scheduler = MultiStepLR(optimizer, milestones=opts.train.lr_scheduler, gamma=opts.train.lr_gamma)
     elif opts.train.lr_policy == 'exp':
         scheduler = ExponentialLR(optimizer, gamma=opts.train.lr_gamma)
-    if opts.model.structure == 'original':
-        # ignore previous setting
-        optimizer = optim.Adam(net.parameters(), lr=0.001)
-        scheduler = StepLR(optimizer, step_size=100, gamma=0.5)
-        opts.train.lr_policy = 'step'
-        opts.train.step_size = 100 if not opts.data.use_ori_relation else 3
-        opts.train.lr_scheduler = [-1]
-        opts.train.lr = 0.001
-        opts.train.lr_gamma = 0.5
-        opts.train.weight_decay = .0
 
-    # VISUALIZE
-    if opts.misc.vis.use:
-        if opts.misc.vis.method == 'tensorboard':
-            NotImplementedError()
-        elif opts.misc.vis.method == 'visdom':
-            if opts.io.resume:
-                try:
-                    vis = Visualizer(opts, net.previous_loss_data)
-                except:
-                    vis = Visualizer(opts, net.module.previous_loss_data)
-            else:
-                vis = Visualizer(opts)
+    # if opts.model.structure == 'original':
+    #     # ignore previous setting
+    #     optimizer = optim.Adam(net.parameters(), lr=0.001)
+    #     scheduler = StepLR(optimizer, step_size=100, gamma=0.5)
+    #     opts.train.lr_policy = 'step'
+    #     opts.train.step_size = 100 if not opts.data.use_ori_relation else 3
+    #     opts.train.lr_scheduler = [-1]
+    #     opts.train.lr = 0.001
+    #     opts.train.lr_gamma = 0.5
+    #     opts.train.weight_decay = .0
 
     if not opts.ctrl.eager:
         opts.print_args()
@@ -126,7 +115,8 @@ def main():
         # select proper train_db (legacy reason)
         which_ind = 0
         curr_shot = opts.fsl.k_shot[0]
-        curr_query = opts.fsl.k_query[0]                # only for display (for evolutionary train)
+        # only for display (for evolutionary train)
+        curr_query = opts.fsl.k_query[0]
         train_db = train_db_list[0]
         val_db = val_db_list[0]
         total_iter = opts.ctrl.total_iter_train[0]
@@ -169,7 +159,8 @@ def main():
 
             # SHOW TRAIN LOSS
             if step % opts.io.iter_vis_loss == 0 or step == total_iter - 1:
-                opts.logger(opts.io.loss_vis_str.format(epoch, total_ep, step, total_iter, total_loss.item()))
+                opts.logger(opts.io.loss_vis_str.format(
+                    epoch, total_ep, step, total_iter, total_loss.item()))
                 # time
                 if step % 1000*opts.io.iter_vis_loss == 0 or step == total_iter - 1:
                     opts.logger(opts.io.time_vis_str.format(left_time[0], left_time[1], left_time[2]))
@@ -199,21 +190,14 @@ def main():
                     'optimizer': optimizer,
                     'meta_test': meta_test
                 }
-                try:
-                    stats = run_test(opts, val_db, net, vis, **arguments)
-                except RuntimeError:
-                    vis.show_dynamic_info(phase='error')
+
+                stats = run_test(opts, val_db, net, [], **arguments)
                 if sum(stats) != -1:
                     best_accuracy, last_epoch, last_iter = stats[0], stats[1], stats[2]
             # DONE with validation process
 
     opts.logger('')
     opts.logger('Training done! check your work using:')
-    if opts.misc.vis.use and opts.misc.vis.method == 'visdom':
-        vis.show_dynamic_info(phase='train_finish')
-        if not opts.ctrl.eager:
-            opts.logger('visdom state saved!')
-            vis.save()
 
 
 if __name__ == '__main__':

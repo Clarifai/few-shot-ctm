@@ -43,14 +43,15 @@ def data_loader(opts):
 
     train_db, val_db, test_db, trainval_db = [], [], [], []
     opts.logger('Preparing datasets: [{:s}] ...'.format(opts.dataset.name))
-    opts.logger('\t\tn_way is {}, k_shot is {}, k_query is {}'.format(opts.fsl.n_way, opts.fsl.k_shot, opts.fsl.k_query))
+    opts.logger('\t\tn_way is {}, k_shot is {}, k_query is {}'.format(
+        opts.fsl.n_way, opts.fsl.k_shot, opts.fsl.k_query))
 
     # create data_loader
     if opts.dataset.name == 'mini-imagenet':
 
         relative_path = 'dataset/miniImagenet/'
 
-        opts.logger('Val data (it is test actually) ...')
+        opts.logger('Test data ...')
         k_query = opts.fsl.k_query[0] if opts.test.manner == 'same_as_train' else opts.test.query_num
         val_data = miniImagenet(
             root=relative_path,

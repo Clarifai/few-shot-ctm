@@ -49,87 +49,6 @@ def test_model(net, input_db, eval_length, opts, which_ind, curr_shot, optimizer
     total_correct, total_num, display_onebatch = \
         torch.zeros(1).to('cuda'), torch.zeros(1).to('cuda'), False
 
-    if opts.ctrl.method == 'meta_learn':
-
-        adapt_num = opts.mlearn.adapt_num if opts.mlearn.adapt_num_test == -1 else opts.mlearn.adapt_num_test
-        weights_before = deepcopy(net.state_dict())
-        # with torch.no_grad():
-        for j, batch_test in enumerate(input_db):
-
-            if j >= eval_length:
-                break
-            support_x, support_y, query_x, query_y = process_input(batch_test, opts, mode='test')
-
-            for i in range(adapt_num):
-                # shape: gpu_num x loss_num
-                loss = net(support_x, support_y, None, None)
-                loss = loss.mean(0)
-                loss *= opts.train.total_loss_fac
-
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
-
-            correct = net(None, None, query_x, query_y, False)
-            total_correct += correct.sum().float()  # multi-gpu support
-            total_num += query_y.size(0) * query_y.size(1)
-
-        net.load_state_dict(weights_before)  # restore from snapshot
-
-        accuracy = total_correct / total_num  # due to python 2, it's converted to int!
-        accuracy = accuracy.item()
-
-    elif opts.fsl.ctm and hasattr(opts.ctmnet, 'use_discri_loss') and \
-            opts.ctmnet.use_discri_loss and opts.ctmnet.discri_test_update:
-
-        for j, batch_test in enumerate(input_db):
-
-            if j >= eval_length:
-                break
-
-            support_x, support_y, query_x, query_y = process_input(batch_test, opts, mode='test')
-            _, correct = net.forward_CTM(support_x, support_y, query_x, query_y, False, optimizer=optimizer)
-            total_correct += correct.sum().float()  # multi-gpu support
-            total_num += query_y.numel()
-
-        accuracy = total_correct / total_num  # due to python 2, it's converted to int!
-        accuracy = accuracy.item()
-
-    else:
-        net.eval()
-        with torch.no_grad():
-            for j, batch_test in enumerate(input_db):
-
-                if j >= eval_length:
-                    break
-
-                support_x, support_y, query_x, query_y = process_input(batch_test, opts, mode='test')
-
-                if opts.fsl.ctm:
-                    _, correct = net.forward_CTM(support_x, support_y, query_x, query_y, False)
-                else:
-                    if opts.model.structure == 'original':
-                        support_x, support_y, query_x, query_y = \
-                            support_x.squeeze(0), support_y.squeeze(0), query_x.squeeze(0), query_y.squeeze(0)
-                        _, correct = net(support_x, support_y, query_x, query_y, False)
-                    else:
-                        _, correct = net(support_x, support_y, query_x, query_y, False,
-                                         opts.fsl.n_way[which_ind], curr_shot)
-
-                total_correct += correct.sum().float()  # multi-gpu support
-                total_num += query_y.numel()
-
-        accuracy = total_correct / total_num        # due to python 2, it's converted to int!
-        accuracy = accuracy.item()
-        net.train()
-    return accuracy
-
-
-def test_model_pretrain(net, input_db, eval_length, opts):
-
-    total_correct, total_num, display_onebatch = \
-        torch.zeros(1).to('cuda'), torch.zeros(1).to('cuda'), False
-
     net.eval()
     with torch.no_grad():
         for j, batch_test in enumerate(input_db):
@@ -137,18 +56,54 @@ def test_model_pretrain(net, input_db, eval_length, opts):
             if j >= eval_length:
                 break
 
-            x, y = batch_test[0].to(opts.ctrl.device), batch_test[1].to(opts.ctrl.device)
-            predict = net(x).argmax(dim=1, keepdim=True)
-            correct = torch.eq(predict, y)
+            support_x, support_y, query_x, query_y = process_input(batch_test, opts, mode='test')
 
-            # compute correct
-            total_correct += correct.sum().float()  # multi-gpu support
-            total_num += predict.numel()
+            if opts.fsl.ctm:
+                _, correct = net.forward_CTM(support_x, support_y, query_x, query_y, False)
+            else:
+                if opts.model.structure == 'original':
+                    support_x, support_y, query_x, query_y = \
+                        support_x.squeeze(0), support_y.squeeze(0), query_x.squeeze(0), query_y.squeeze(0)
+                    _, correct = net(support_x, support_y, query_x, query_y, False)
+                else:
+                    _, correct = net(support_x, support_y, query_x, query_y, False,
+                                     opts.fsl.n_way[which_ind], curr_shot)
 
-    accuracy = total_correct / total_num  # due to python 2, it's converted to int!
-    accuracy = accuracy.item()
+            # multi-gpu support
+            total_correct += correct.sum().float()
+            total_num += query_y.numel()
+
+        # due to python 2, it's converted to int!
+        accuracy = total_correct / total_num
+        accuracy = accuracy.item()
     net.train()
     return accuracy
+
+
+# def test_model_pretrain(net, input_db, eval_length, opts):
+#
+#     total_correct, total_num, display_onebatch = \
+#         torch.zeros(1).to('cuda'), torch.zeros(1).to('cuda'), False
+#
+#     net.eval()
+#     with torch.no_grad():
+#         for j, batch_test in enumerate(input_db):
+#
+#             if j >= eval_length:
+#                 break
+#
+#             x, y = batch_test[0].to(opts.ctrl.device), batch_test[1].to(opts.ctrl.device)
+#             predict = net(x).argmax(dim=1, keepdim=True)
+#             correct = torch.eq(predict, y)
+#
+#             # compute correct
+#             total_correct += correct.sum().float()  # multi-gpu support
+#             total_num += predict.numel()
+#
+#     accuracy = total_correct / total_num  # due to python 2, it's converted to int!
+#     accuracy = accuracy.item()
+#     net.train()
+#     return accuracy
 
 
 def run_test(opts, val_db, net, vis, **args):
@@ -170,62 +125,30 @@ def run_test(opts, val_db, net, vis, **args):
     except KeyError:
         meta_test = None
 
-    _tmp = '<br/><br/><b>TEST</b><br/>'
     _curr_str = '\tEvaluating at epoch {}, step {}, with eval_length {} ... (be patient)'.format(
         epoch, step, int(eval_length))
     opts.logger(_curr_str)
-    _tmp += _curr_str.replace('\t', '&emsp;') + '<br/>'
-    if opts.fsl.evolution:
-        _curr_str = '\t---- n_way {}, k_shot {}, k_query {} ----'.format(
-            opts.fsl.n_way[which_ind], curr_shot, curr_query)
-        opts.logger(_curr_str)
-        _tmp += _curr_str.replace('\t', '&emsp;') + '<br/>'
-
-    if opts.misc.vis.use and opts.misc.vis.method == 'visdom':
-        info = {'msg': _tmp}
-        vis.show_dynamic_info(phase='test', **info)
-        vis._show_config()
 
     accuracy = test_model(net, val_db, eval_length, opts, which_ind, curr_shot, optimizer, meta_test)
 
     eqn = '>' if accuracy > best_accuracy else '<'
-    if opts.fsl.evolution:
-        _str = '(true)' if epoch >= opts.fsl.epoch_schedule[-1] else '(pseudo)'
-    else:
-        _str = ''
     _curr_str = '\t\tCurrent {:s} accuracy is {:.4f} {:s} ' \
                 'previous best accuracy is {:.4f} (ep{}, iter{})'.format(
-        _str, accuracy, eqn, best_accuracy, last_epoch, last_iter)
+        accuracy, eqn, best_accuracy, last_epoch, last_iter)
     opts.logger(_curr_str)
-    _tmp += _curr_str.replace('\t', '&emsp;') + '<br/>'
-    if opts.misc.vis.use and opts.misc.vis.method == 'visdom':
-        info = {'msg': _tmp}
-        vis.show_dynamic_info(phase='test', **info)
-        if not opts.ctrl.eager:
-            vis.save()
 
     # Also test the train-accuracy at end of one epoch
     if opts.test.compute_train_acc and step == total_iter - 1 and not opts.ctrl.eager:
         _curr_str = '\tEvaluating training acc at epoch {}, step {}, length {} ... (be patient)'.format(
             epoch, step, len(train_db))
         opts.logger(_curr_str)
-        _tmp += _curr_str.replace('\t', '&emsp;') + '<br/>'
 
         train_acc = test_model(net, train_db, len(train_db), opts, which_ind, curr_shot, optimizer, meta_test)
 
         _curr_str = '\t\tCurrent train_accuracy is {:.4f} at END of epoch {:d}'.format(
             train_acc, epoch)
         opts.logger(_curr_str)
-        _tmp += _curr_str.replace('\t', '&emsp;') + '<br/>'
         opts.logger('')
-        if opts.misc.vis.use and opts.misc.vis.method == 'visdom':
-            info = {'msg': _tmp}
-            vis.show_dynamic_info(phase='test', **info)
-
-    _tmp = _tmp.replace('<b>TEST</b>', 'Last test stats')
-    if opts.misc.vis.use and opts.misc.vis.method == 'visdom':
-        info = {'msg': _tmp}
-        vis.show_dynamic_info(phase='test_finish', **info)
 
     # SAVE MODEL
     if accuracy > best_accuracy:
@@ -241,15 +164,6 @@ def run_test(opts, val_db, net, vis, **args):
             'val_acc': accuracy,
             'options': opts,
         }
-        if opts.misc.vis.use and opts.misc.vis.method == 'visdom':
-            file_to_save.update({'loss_data': vis.loss_data})
-            info = {
-                'acc': accuracy,
-                'epoch': epoch,
-                'iter': step,
-                'path': opts.io.model_file
-            }
-            vis.show_best_model(**info)
 
         torch.save(file_to_save, opts.io.model_file)
         opts.logger('\tBest model saved to: {}, at [epoch {} / iter {}]\n'.format(
