@@ -1,0 +1,27 @@
+dataset:
+    name: 'mini-imagenet'
+model:
+    structure: 'shallow'
+test:
+    compute_train_acc: True
+    do_after_ep: 5           # non-eager mode
+ctmnet:
+    pred_source: 'score'
+    dnet: True
+    dnet_out_c: 40   # shallow output channel is 64
+    dnet_supp_manner: '1'
+    use_discri_loss: False
+fsl:
+    ctm: True
+    n_way: [5]
+    k_shot: [5]
+    k_query: [5]
+train:
+    clip_grad: True
+    batch_sz: 1
+    nep: 50
+    lr_scheduler: [200, 300, 350]
+ctrl:
+    method: 'all_new'   # keep it in all new experiments
+    eager: 0
+    note: 'config file: {:s}'
