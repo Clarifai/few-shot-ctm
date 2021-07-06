@@ -132,7 +132,7 @@ def run_test(opts, val_db, net, vis, **args):
     accuracy = test_model(net, val_db, eval_length, opts, which_ind, curr_shot, optimizer, meta_test)
 
     eqn = '>' if accuracy > best_accuracy else '<'
-    _curr_str = '\t\tCurrent {:s} accuracy is {:.4f} {:s} ' \
+    _curr_str = '\t\tCurrent accuracy is {:.4f} {} ' \
                 'previous best accuracy is {:.4f} (ep{}, iter{})'.format(
         accuracy, eqn, best_accuracy, last_epoch, last_iter)
     opts.logger(_curr_str)

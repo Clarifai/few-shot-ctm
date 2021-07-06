@@ -115,9 +115,10 @@ class Bottleneck(nn.Module):
 
 
 class ResNet(nn.Module):
-    def __init__(self, block, layers, in_c):
+    def __init__(self, block, layers, in_c, include_head=False, num_classes=None):
         super(ResNet, self).__init__()
 
+        self.include_head = include_head
         self.inplanes = 64
         self.conv1 = nn.Conv2d(in_c, 64, kernel_size=7, stride=2, padding=3, bias=False)
         self.bn1 = nn.BatchNorm2d(64)
@@ -127,9 +128,8 @@ class ResNet(nn.Module):
         self.layer1 = self._make_layer(block, 64, layers[0])
         self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
         self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
-        # self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
-        # self.avgpool = nn.AvgPool2d(7, stride=1)
-        # self.fc = nn.Linear(512 * block.expansion, num_classes)
+        if self.include_head:
+            self.fc = nn.Linear(256 * block.expansion, num_classes)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -166,10 +166,15 @@ class ResNet(nn.Module):
         x = self.layer2(x)
         x = self.layer3(x)
 
+        if self.include_head:
+            x = torch.mean(x, dim=(2,3))
+            x = x.view(x.size(0), -1)
+            x = self.fc(x)
+
         return x
 
 
-def feat_extract(pretrained=False, **kwargs):
+def feat_extract(pretrained=False, include_head=False, **kwargs):
     """Constructs a ResNet-Mini-Imagenet model"""
     model_urls = {
         'resnet18':     'https://download.pytorch.org/models/resnet18-5c106cde.pth',
@@ -181,13 +186,13 @@ def feat_extract(pretrained=False, **kwargs):
     logger = kwargs['opts'].logger
     # resnet"x", x = 1 + sum(layers)x3
     if kwargs['structure'] == 'resnet40':
-        model = ResNet(Bottleneck, [3, 4, 6], kwargs['in_c'])
+        model = ResNet(Bottleneck, [3, 4, 6], kwargs['in_c'], include_head, kwargs.get('num_classes'))
     elif kwargs['structure'] == 'resnet19':
-        model = ResNet(Bottleneck, [2, 2, 2], kwargs['in_c'])
+        model = ResNet(Bottleneck, [2, 2, 2], kwargs['in_c'], include_head, kwargs.get('num_classes'))
     elif kwargs['structure'] == 'resnet52':
-        model = ResNet(Bottleneck, [4, 8, 5], kwargs['in_c'])
+        model = ResNet(Bottleneck, [4, 8, 5], kwargs['in_c'], include_head, kwargs.get('num_classes'))
     elif kwargs['structure'] == 'resnet34':
-        model = ResNet(Bottleneck, [3, 4, 4], kwargs['in_c'])
+        model = ResNet(Bottleneck, [3, 4, 4], kwargs['in_c'], include_head, kwargs.get('num_classes'))
     elif kwargs['structure'] == 'shallow':
         model = CNNEncoder(kwargs['in_c'])
     else:
@@ -204,6 +209,9 @@ class CTMNet(nn.Module):
     def __init__(self, opts):
         super(CTMNet, self).__init__()
 
+        self.mp_mean = None
+        self.delete_mp = None
+
         self.opts = opts
         if self.opts.fsl.ctm:
             # use forward_CTM method
@@ -214,6 +222,7 @@ class CTMNet(nn.Module):
                 self.baseline_manner = self.opts.ctmnet.baseline_manner
             except:
                 self.baseline_manner = ''
+            self.dnet_supp_manner = self.opts.ctmnet.dnet_supp_manner
 
         _logger = opts.logger
         _logger('Building up models ...')

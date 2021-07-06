@@ -32,12 +32,25 @@ class Config(object):
     fsl.k_shot = [5]
     fsl.k_query = [5]
     fsl.epoch_schedule = [10, 30, 40]
+    fsl.triplet = False
+    fsl.swap = False
+    fsl.swap_num = 0
+    fsl.meta_learn = 'nope'
+    fsl.CE_loss = None
+    fsl.hier = None
+
+    tri = AttrDict()                # few-shot learning
+    mlearn = AttrDict()                # few-shot learning
 
     # ==============
     ctmnet = AttrDict()
     ctmnet.CE_use_relation = False
     ctmnet.baseline_manner = ''     # 'sample_wise', 'sum', 'no_reshaper'
     ctmnet.dnet = True
+    ctmnet.pred_source = 'score'
+    ctmnet.dnet_out_c = 40            # shallow output channel is 64
+    ctmnet.dnet_supp_manner = '1'
+    ctmnet.use_discri_loss = False
 
     # ==============
     io = AttrDict()
@@ -186,9 +199,6 @@ class Config(object):
         multi_gpu = True if len(self.ctrl.gpu_id) > 1 else False
         self.logger('gpu_ids: {}\n'.format(self.ctrl.gpu_id))
         self.ctrl.multi_gpu = multi_gpu
-        # for demo purpose
-        self.ctrl.device = 'cpu'
-        # self.ctrl.device = 'cuda'
 
     def _sanity_check(self):
 

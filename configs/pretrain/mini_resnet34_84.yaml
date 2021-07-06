@@ -1,0 +1,20 @@
+data:
+    im_size: 84
+dataset:
+    name: 'mini-imagenet'
+model:
+    structure: 'resnet34'
+train:
+    batch_sz: 512
+    nep: 1000
+    lr_scheduler: [500, 800]
+    lr: 0.01
+    optim: 'sgd'
+test:
+    batch_sz: 512
+    compute_train_acc: True
+    do_after_ep: 400           # non-eager mode
+ctrl:
+    method: 'all_new'
+    pretrain: True
+    eager: 0
